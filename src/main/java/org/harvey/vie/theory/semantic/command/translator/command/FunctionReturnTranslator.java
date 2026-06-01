@@ -15,12 +15,30 @@ import org.harvey.vie.theory.syntax.grammar.produce.SimpleGrammarProduction;
 /**
  * 翻译 return 语句。
  * <p>
- * 当返回表达式已被常量传播为编译期常量时，直接生成常量装载指令；
- * 否则先计算表达式，再统一追加返回指令。
+ * 输入：
+ * - 当前归约出的 return 语法节点；
+ * - 如果带返回值，则 children[1] 对应返回表达式的命令节点。
+ * <p>
+ * 输出：
+ * - 一个新的 {@link NormalCommandNodeRegister}；
+ * - 其中包含“返回值求值命令（可选） + return 命令”。
+ * <p>
+ * 功能：
+ * - 对 `return;` 直接生成 return 命令；
+ * - 对 `return expr;` 先生成返回值求值命令，再生成 return；
+ * - 如果返回值已在语义阶段折叠成常量，则直接装载常量，减少多余命令。
  *
  * @author Temper
  */
 public class FunctionReturnTranslator implements CommandTranslator {
+    /**
+     * 把 return 语句翻译成命令流。
+     *
+     * @param context 当前语义上下文
+     * @param production 当前归约产生式，预期对应 return_stmt
+     * @param children 子节点翻译结果，可能是 2 个或 3 个
+     * @return 包含返回值求值命令和 return 命令的注册器
+     */
     @Override
     public CommandNodeRegister translate(
             ShiftReduceSemanticContext context,

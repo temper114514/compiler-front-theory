@@ -17,9 +17,20 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Registers struct declarations and field layouts.
- *
- * @author Temper
+ * 负责结构体声明的注册，以及字段布局的建立。
+ * <p>
+ * 输入：
+ * - 语法分析阶段每一次和结构体相关的归约结果；
+ * - 当前语义上下文中的结构体表、类型表和语法树上下文。
+ * <p>
+ * 输出：
+ * - 新的结构体记录注册到结构体表；
+ * - 字段重名、非法字段类型等诊断信息。
+ * <p>
+ * 功能：
+ * - 在归约出结构体声明时登记结构体类型；
+ * - 展开字段列表并分配字段偏移；
+ * - 让后续成员访问可以直接根据偏移生成命令。
  */
 public class StructSemanticCallback implements ShiftReduceCallback {
     private static final ProductionTagStrategy<ReduceAction> REDUCE_ACTIONS = new ProductionTagStrategy<>(ReduceAction.NOOP)
@@ -27,6 +38,17 @@ public class StructSemanticCallback implements ShiftReduceCallback {
 
     private final StructFieldStepper fieldStepper = new StructFieldStepper();
 
+    /**
+     * 处理一次 reduce 事件。
+     *
+     * 输入：
+     * - 当前归约产生式；
+     * - 当前归约后生成的语法树头节点。
+     *
+     * 输出：
+     * - 如果本次归约是结构体声明，则完成结构体注册；
+     * - 然后继续执行框架默认的 reduce 逻辑。
+     */
     @Override
     public void onReduce(ShiftReduceSemanticContext context, SimpleGrammarProduction production) {
         if (!context.getTreeContext().isEmpty() && context.getTreeContext().peek().isHead()) {
@@ -36,6 +58,16 @@ public class StructSemanticCallback implements ShiftReduceCallback {
         ShiftReduceCallback.super.onReduce(context, production);
     }
 
+    /**
+     * 注册结构体类型，并检查结构体名是否重复。
+     * <p>
+     * 输入：
+     * - 当前归约出的 struct_decl 节点。
+     * <p>
+     * 输出：
+     * - 新的 {@link StructRecord} 注册到结构体表；
+     * - 同时检查字段引用到的类型是否已声明。
+     */
     private void registerStruct(ShiftReduceSemanticContext context, HeadNode head, SimpleGrammarProduction production) {
         SourceToken nameToken = head.get(1).toToken().getSource();
         if (context.existStruct(nameToken)) {
@@ -49,6 +81,20 @@ public class StructSemanticCallback implements ShiftReduceCallback {
         }
     }
 
+    /**
+     * 把链式字段列表展开成有序字段表。
+     * 这里顺便完成：
+     * - 字段类型读取
+     * - void 字段禁止
+     * - 重名字段检查
+     * - 字段偏移分配
+     * <p>
+     * 输入：
+     * - struct_field_list 对应的语法树头节点。
+     * <p>
+     * 输出：
+     * - 一个按源码顺序排列、并已分配 offset 的字段列表。
+     */
     private List<StructField> collectFields(ShiftReduceSemanticContext context, HeadNode listHead) {
         List<StructField> fields = new ArrayList<>();
         SyntaxTreeListIterator<HeadNode> iterator = new SyntaxTreeListIterator<>(listHead, fieldStepper);
@@ -67,6 +113,7 @@ public class StructSemanticCallback implements ShiftReduceCallback {
                     SemanticDiagnostics.reject(context, fieldName, "duplicate struct field declaration is not allowed.");
                 }
             }
+            // 当前实现里偏移按字段顺序递增，成员访问时直接使用这个偏移定位字段。
             fields.add(new StructField(fieldName, type, offset++));
         }
         return fields;

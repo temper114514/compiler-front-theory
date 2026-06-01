@@ -14,12 +14,28 @@ import org.harvey.vie.theory.syntax.grammar.produce.SimpleGrammarProduction;
 /**
  * 翻译结构体实例化表达式。
  * <p>
- * 这里会根据语法树中的结构体名查找结构体定义，
- * 并生成一条按记录布局分配对象的创建指令。
+ * 输入：
+ * - 当前归约出的 new_struct_expr，例如 {@code new Student()}。
+ * <p>
+ * 输出：
+ * - 一个只包含 `new_struct` 命令的命令节点注册器。
+ * <p>
+ * 功能：
+ * - 从语法树中取出结构体类型名；
+ * - 在结构体表中查找对应定义；
+ * - 生成结构体实例分配命令。
  *
  * @author Temper
  */
 public class NewStructTranslator implements CommandTranslator {
+    /**
+     * 把结构体实例化表达式翻译成对象分配命令。
+     *
+     * @param context 当前语义上下文
+     * @param production 当前归约产生式，预期对应 new_struct_expr
+     * @param children 子节点翻译结果
+     * @return 只包含结构体创建命令的注册器
+     */
     @Override
     public CommandNodeRegister translate(
             ShiftReduceSemanticContext context,

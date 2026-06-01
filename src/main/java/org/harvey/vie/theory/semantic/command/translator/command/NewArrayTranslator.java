@@ -17,10 +17,28 @@ import org.harvey.vie.theory.syntax.grammar.produce.SimpleGrammarProduction;
 /**
  * 翻译数组创建表达式。
  * <p>
- * 该翻译器会先校验元素类型是否合法，再汇总维度声明信息，
- * 最终把各维度长度求值结果与数组元数据一并交给命令工厂。
+ * 输入：
+ * - 当前归约出的 new_array_expr，例如 {@code new Student[2]} 或 {@code new Student[1][2]}；
+ * - children[2] 对应各个显式维度长度表达式的命令。
+ * <p>
+ * 输出：
+ * - 一个新的 {@link NormalCommandNodeRegister}；
+ * - 其中包含“显式维度求值命令 + new_array 命令”。
+ * <p>
+ * 功能：
+ * - 检查数组元素类型是否合法；
+ * - 汇总数组总维度和显式维度数量；
+ * - 先求值每个显式维度长度，再发出数组分配命令。
  */
 public class NewArrayTranslator implements CommandTranslator {
+    /**
+     * 把数组创建表达式翻译成数组分配命令流。
+     *
+     * @param context 当前语义上下文
+     * @param production 当前归约产生式，预期对应 new_array_expr
+     * @param children 子节点翻译结果，children[2] 对应维度表达式
+     * @return 包含维度求值命令和 new_array 命令的注册器
+     */
     @Override
     public CommandNodeRegister translate(
             ShiftReduceSemanticContext context,
